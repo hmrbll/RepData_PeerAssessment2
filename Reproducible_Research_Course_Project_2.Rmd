@@ -1,0 +1,133 @@
+---
+title: 'Reproducible Research Peer Graded Assignment: Course Project 2'
+author: "Huseyin Emre Balli"
+date: "December 15, 2018"
+output: html_document
+---
+
+# Most Harmful Events to the Population Health and to the General Economics
+
+## Synopsis
+
+This analysis is conducted for Coursera course Reproducible Research. Data set used for this analysis can be found in: https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2. Which is National Weather Service's Storm Data. There are 2 main parts, in the first one analysis tries to determine which events are most harmful to the population health with using fatalities and injuries variables. And in the second part this analysis shows most harmful event types to the general economics with using property damage and crop damage variables.
+
+## Data Processing
+
+### Downloading and Reading Data
+
+```{r}
+file_url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+file_path <- "stormdata.csv.bz2"
+download.file(file_url, file_path, method = "curl")
+stormdata <- read.csv(file_path, stringsAsFactors = FALSE)
+```
+
+### Look for Basic Characteristics of the Dataset
+
+```{r}
+head(stormdata)
+summary(stormdata)
+str(stormdata)
+```
+
+### Data for Part - I
+
+Create 'harmful_health' data frame with necessary variables. Add them up, summarise and order by most harmful. Then select top 6 event types to demonstrate most harmful one is "Tornado".
+
+```{r}
+library(dplyr)
+harmful_health <- stormdata %>%
+        select(EVTYPE, FATALITIES, INJURIES)
+
+harmful_health$EVTYPE <- as.factor(harmful_health$EVTYPE)
+
+harmful_health$FatalorInjury <- harmful_health$FATALITIES + harmful_health$INJURIES
+
+harmful_health <- harmful_health %>%
+        select(EVTYPE, FatalorInjury)
+
+harmful_health_summary <- harmful_health %>%
+        group_by(EVTYPE) %>%
+                summarise(Harm = sum(FatalorInjury)) %>%
+                        arrange(desc(Harm))
+
+harmful_health_summary_head <- head(harmful_health_summary)
+```
+
+### Data for Part - II
+
+Create 'harmful_econ' data frame with necessary variables. Make sure that the variables is in same units, add them up, summarise and order by most harmful. Then select top 6 event types to demonstrate most harmful one is "Hail".
+
+```{r}
+harmful_econ <- stormdata %>%
+        select(EVTYPE, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
+
+harmful_econ$EVTYPE <- as.factor(harmful_econ$EVTYPE)
+
+harmful_econ <- harmful_econ %>%
+        filter(!(PROPDMG == 0 & CROPDMG == 0)) %>%
+                mutate(Harm = ifelse(PROPDMG == 0, 
+                                     ifelse(CROPDMGEXP == "K", 
+                                            CROPDMG * 1000, 
+                                            ifelse(CROPDMGEXP == "M", 
+                                                   CROPDMG * 1000000,
+                                                   ifelse(CROPDMGEXP == "B", 
+                                                          CROPDMG * 1000000000,
+                                                          0))),
+                                     ifelse(CROPDMG == 0,
+                                            ifelse(PROPDMGEXP == "K",
+                                                   PROPDMG * 1000,
+                                                   ifelse(PROPDMGEXP == "M",
+                                                          PROPDMG * 1000000,
+                                                          ifelse(PROPDMGEXP == "B",
+                                                                 PROPDMG * 1000000000,
+                                                                 0))),
+                                            ifelse(CROPDMGEXP == "K",
+                                                   ifelse(PROPDMGEXP == "K",
+                                                          CROPDMG * 1000 + PROPDMG * 1000,
+                                                          ifelse(PROPDMGEXP == "M",
+                                                                 CROPDMG * 1000 + PROPDMG * 1000000,
+                                                                 CROPDMG * 1000 + PROPDMG * 1000000000)),
+                                                   ifelse(CROPDMGEXP == "M",
+                                                          ifelse(PROPDMGEXP == "K",
+                                                                 CROPDMG * 1000000 + PROPDMG * 1000,
+                                                                 ifelse(PROPDMGEXP == "M",
+                                                                        CROPDMG * 1000000 + PROPDMG * 1000000,
+                                                                        CROPDMG * 1000000 + PROPDMG * 1000000000)),
+                                                          ifelse(PROPDMGEXP == "K",
+                                                                 CROPDMG * 1000000000 + PROPDMG * 1000,
+                                                                 ifelse(PROPDMGEXP == "M",
+                                                                        CROPDMG * 1000000000 + PROPDMG * 1000000,
+                                                                        CROPDMG * 1000000000 + PROPDMG * 1000000000)))))))
+
+harmful_econ_summary <- harmful_econ %>%
+        select(EVTYPE, Harm) %>%
+                group_by(EVTYPE) %>%
+                        summarise(Harm = sum(Harm)) %>%
+                                arrange(desc(Harm))
+
+harmful_econ_summary_head <- head(harmful_econ_summary)
+
+harmful_econ_summary_head$Harm <- harmful_econ_summary_head$Harm / 1000000000
+```
+
+## Results
+
+### Most Harmful Event Type for Healt is Tornado
+
+```{r}
+library(ggplot2)
+ggplot(data = harmful_health_summary_head, aes(x = EVTYPE, y = Harm)) +
+        geom_col(fill = "cyan", color = "black") +
+                labs(x = "Event Type", y = "Fatalities and Injuries", title = "Most harmful events to the population health") +
+                        theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Most harmful Event Type for Economics is Hail
+
+```{r}
+ggplot(data = harmful_econ_summary_head, aes(x = EVTYPE, y = Harm)) +
+        geom_col(aes(fill = EVTYPE), color = "black") +
+                labs(x = "Event Type", y = "Property and Crop Damage (Billion $)", title = "Most harmful events to the general economics") +
+                        theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_blank())
+```
