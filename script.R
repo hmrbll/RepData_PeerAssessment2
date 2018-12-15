@@ -24,7 +24,11 @@ harmful_health_summary <- harmful_health %>%
 
 harmful_health_summary_head <- head(harmful_health_summary)
 
-
+library(ggplot2)
+ggplot(data = harmful_health_summary_head, aes(x = EVTYPE, y = Harm)) +
+        geom_col(fill = "cyan", color = "black") +
+                labs(x = "Event Type", y = "Fatalities and Injuries", title = "Most harmful events to the population health") +
+                        theme(plot.title = element_text(hjust = 0.5))
 
 harmful_econ <- stormdata %>%
         select(EVTYPE, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
@@ -73,4 +77,11 @@ harmful_econ_summary <- harmful_econ %>%
                         summarise(Harm = sum(Harm)) %>%
                                 arrange(desc(Harm))
 
-head(harmful_econ_summary)
+harmful_econ_summary_head <- head(harmful_econ_summary)
+
+harmful_econ_summary_head$Harm <- harmful_econ_summary_head$Harm / 1000000000
+
+ggplot(data = harmful_econ_summary_head, aes(x = EVTYPE, y = Harm)) +
+        geom_col(aes(fill = EVTYPE), color = "black") +
+                labs(x = "Event Type", y = "Property and Crop Damage (Billion $)", title = "Most harmful events to the general economics") +
+                        theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_blank())
